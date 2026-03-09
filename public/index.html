@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LinkPC">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<title>LinkPC</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a0a0f;--surface:#13131a;--border:#1e1e2e;
+    --accent:#00e5a0;--accent2:#7c6af7;
+    --text:#e8e8f0;--text-dim:#6b6b80;
+    --msg-me:#1a2a3a;--msg-pc:#1a1a2e;--msg-sys:#111118;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
+
+  /* HEADER */
+  header{padding:14px 18px 10px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .header-info{flex:1;min-width:0}
+  .header-title{font-size:15px;font-weight:600;letter-spacing:-0.3px}
+  .header-sub{font-size:10px;color:var(--text-dim);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);transition:background .4s;flex-shrink:0}
+  .dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+  /* BANNER "AGGIUNGI A HOME" */
+  #a2hsBanner{display:none;background:#1a1a2a;border-bottom:1px solid var(--border);padding:10px 16px;font-size:12px;color:var(--text-dim);text-align:center;line-height:1.5;flex-shrink:0}
+  #a2hsBanner b{color:var(--accent)}
+  #a2hsBanner.show{display:block}
+
+  /* SETUP */
+  #setup{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;gap:18px}
+  #setup h2{font-size:21px;font-weight:600;text-align:center}
+  #setup p{font-size:13px;color:var(--text-dim);text-align:center;line-height:1.6}
+  .input-group{width:100%;display:flex;flex-direction:column;gap:7px}
+  .input-group label{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace}
+  input[type=text]{width:100%;padding:13px 15px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
+  input[type=text]:focus{border-color:var(--accent)}
+  .btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:opacity .2s,transform .1s}
+  .btn:active{transform:scale(.98);opacity:.9}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text-dim);font-size:13px;padding:11px}
+
+  /* PUSH PROMPT */
+  #pushPrompt{display:none;width:100%;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px;gap:10px;flex-direction:column}
+  #pushPrompt.show{display:flex}
+  #pushPrompt p{font-size:13px;color:var(--text-dim);line-height:1.5}
+  #pushPrompt p b{color:var(--text)}
+  .push-btns{display:flex;gap:8px}
+  .push-btns button{flex:1;padding:9px;border-radius:9px;border:none;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer}
+  #btnAllowPush{background:var(--accent);color:#0a0a0f}
+  #btnSkipPush{background:var(--surface);color:var(--text-dim);border:1px solid var(--border)}
+
+  /* CHAT */
+  #chat{flex:1;display:none;flex-direction:column}
+  #chat.visible{display:flex}
+  #messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:7px;scroll-behavior:smooth}
+  #messages::-webkit-scrollbar{width:3px}
+  #messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+  .msg{max-width:80%;padding:10px 13px;border-radius:13px;font-size:14px;line-height:1.5;animation:msgIn .18s ease}
+  @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  .msg-me{background:var(--msg-me);border:1px solid #1e3a5a;align-self:flex-end;border-bottom-right-radius:3px}
+  .msg-from{background:var(--msg-pc);border:1px solid #1e1e3a;align-self:flex-start;border-bottom-left-radius:3px}
+  .msg-sys{background:var(--msg-sys);border:1px solid var(--border);align-self:center;text-align:center;font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;padding:5px 11px;border-radius:18px}
+  .msg-sender{font-size:10px;color:var(--accent2);font-family:'DM Mono',monospace;margin-bottom:3px;font-weight:500}
+  .msg-time{font-size:10px;color:var(--text-dim);margin-top:3px;font-family:'DM Mono',monospace}
+
+  /* STATUS BAR */
+  #statusBar{padding:7px 15px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-dim);background:var(--surface);border-top:1px solid var(--border);display:flex;gap:14px;flex-shrink:0;align-items:center}
+  .sb-item{display:flex;align-items:center;gap:5px}
+  .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--border)}
+  .sb-dot.on{background:var(--accent)}
+  .sb-dot.pc{background:var(--accent2)}
+  #notifBadge{margin-left:auto;font-size:10px;cursor:pointer;color:var(--text-dim);text-decoration:underline}
+
+  /* INPUT */
+  #inputArea{padding:10px 14px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:9px;align-items:flex-end;flex-shrink:0}
+  #msgInput{flex:1;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;resize:none;max-height:110px;transition:border-color .2s;line-height:1.4}
+  #msgInput:focus{border-color:var(--accent)}
+  #sendBtn{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s,transform .1s}
+  #sendBtn:active{transform:scale(.93)}
+  #sendBtn svg{width:19px;height:19px;fill:white}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">⚡</div>
+    <div class="header-info">
+      <div class="header-title">LinkPC</div>
+      <div class="header-sub" id="headerSub">non connesso</div>
+    </div>
+    <div class="dot" id="statusDot"></div>
+  </header>
+
+  <!-- Banner "Aggiungi a Home" per iOS -->
+  <div id="a2hsBanner">
+    📱 Per ricevere notifiche su iOS: tocca <b>Condividi</b> → <b>Aggiungi a schermata Home</b>, poi riapri da lì.
+  </div>
+
+  <!-- SETUP -->
+  <div id="setup">
+    <h2>Connetti al tuo PC</h2>
+    <p>Inserisci il tuo nome e connettiti al server relay per chattare col PC sulla rete privata.</p>
+
+    <div class="input-group">
+      <label>IL TUO NOME</label>
+      <input type="text" id="nameInput" placeholder="es. Mario" maxlength="20" />
+    </div>
+
+    <!-- Prompt attivazione notifiche -->
+    <div id="pushPrompt">
+      <p><b>🔔 Notifiche push</b><br>Ricevi una notifica anche quando l'app è in background o chiusa.</p>
+      <div class="push-btns">
+        <button id="btnAllowPush">Attiva notifiche</button>
+        <button id="btnSkipPush">Salta</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="connect()">Connetti →</button>
+    <button class="btn btn-secondary" id="btnNotifSetup" style="display:none" onclick="requestPushPermission()">🔔 Abilita notifiche</button>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chat">
+    <div id="messages"></div>
+    <div id="statusBar">
+      <div class="sb-item"><div class="sb-dot on" id="sbServer"></div><span>server</span></div>
+      <div class="sb-item"><div class="sb-dot pc" id="sbPc"></div><span id="sbPcTxt">pc offline</span></div>
+      <span id="notifBadge" onclick="requestPushPermission()" style="display:none">🔔 attiva notifiche</span>
+    </div>
+    <div id="inputArea">
+      <textarea id="msgInput" placeholder="Scrivi un messaggio…" rows="1"></textarea>
+      <button id="sendBtn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Globals ──────────────────────────────────────────────────────────────────
+let ws = null;
+let myName = '';
+let swRegistration = null;
+let pushEnabled = false;
+
+// ─── Service Worker ───────────────────────────────────────────────────────────
+async function initSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('/sw.js');
+    console.log('[SW] Registrato');
+  } catch (e) {
+    console.error('[SW] Errore registrazione:', e);
+  }
+}
+
+// ─── Rilevamento iOS "standalone" ─────────────────────────────────────────────
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+}
+
+// ─── Gestione permesso notifiche ──────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function requestPushPermission() {
+  if (!swRegistration) { appendSystem('⚠️ Service Worker non disponibile'); return; }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    appendSystem('🔕 Notifiche non autorizzate');
+    return;
+  }
+
+  try {
+    const res = await fetch('/vapid-public-key');
+    const { key } = await res.json();
+
+    const subscription = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key)
+    });
+
+    await fetch('/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription, name: myName || 'Telefono' })
+    });
+
+    pushEnabled = true;
+    document.getElementById('notifBadge').style.display = 'none';
+    appendSystem('🔔 Notifiche push attivate!');
+    console.log('[PUSH] Sottoscritto');
+  } catch (e) {
+    console.error('[PUSH] Errore sottoscrizione:', e);
+    appendSystem('⚠️ Errore attivazione notifiche: ' + e.message);
+  }
+}
+
+// ─── Connect ──────────────────────────────────────────────────────────────────
+function connect() {
+  const nameInput = document.getElementById('nameInput');
+  myName = nameInput.value.trim() || 'Telefono';
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${location.host}?type=phone&name=${encodeURIComponent(myName)}`;
+
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('chat').classList.add('visible');
+    document.getElementById('statusDot').classList.add('on');
+    document.getElementById('headerSub').textContent = myName;
+
+    // Mostra badge notifiche se non ancora attivate
+    if (Notification.permission !== 'granted') {
+      document.getElementById('notifBadge').style.display = 'block';
+    } else {
+      // Già permesso: sottoscrivi silenziosamente
+      requestPushPermission();
+    }
+  };
+
+  ws.onmessage = e => handleMessage(JSON.parse(e.data));
+
+  ws.onclose = () => {
+    appendSystem('🔌 Disconnesso dal server');
+    document.getElementById('statusDot').classList.remove('on');
+    document.getElementById('headerSub').textContent = 'disconnesso';
+  };
+
+  ws.onerror = () => appendSystem('❌ Errore connessione');
+}
+
+// ─── Messaggi ─────────────────────────────────────────────────────────────────
+function handleMessage(msg) {
+  if (msg.type === 'status') {
+    const pcDot = document.getElementById('sbPc');
+    const pcTxt = document.getElementById('sbPcTxt');
+    pcDot.classList.toggle('on', msg.pcConnected);
+    pcTxt.textContent = msg.pcConnected ? 'pc online' : 'pc offline';
+    return;
+  }
+  if (msg.type === 'system') { appendSystem(msg.text); return; }
+  if (msg.type === 'echo')   { return; }
+  appendFrom(msg.from || 'PC', msg.text, msg.timestamp);
+}
+
+function sendMsg() {
+  const text = document.getElementById('msgInput').value.trim();
+  if (!text || !ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'message', text }));
+  appendMe(text);
+  const input = document.getElementById('msgInput');
+  input.value = '';
+  input.style.height = 'auto';
+}
+
+function appendMe(text) {
+  addMsg(`<div class="msg msg-me"><div>${esc(text)}</div><div class="msg-time">${time()}</div></div>`);
+}
+function appendFrom(from, text, ts) {
+  addMsg(`<div class="msg msg-from"><div class="msg-sender">${esc(from)}</div><div>${esc(text)}</div><div class="msg-time">${fmtTime(ts)}</div></div>`);
+}
+function appendSystem(text) {
+  addMsg(`<div class="msg msg-sys">${esc(text)}</div>`);
+}
+function addMsg(html) {
+  const msgs = document.getElementById('messages');
+  msgs.insertAdjacentHTML('beforeend', html);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ─── Push prompt UI ───────────────────────────────────────────────────────────
+document.getElementById('btnAllowPush').onclick = async () => {
+  document.getElementById('pushPrompt').classList.remove('show');
+  await requestPushPermission();
+};
+document.getElementById('btnSkipPush').onclick = () => {
+  document.getElementById('pushPrompt').classList.remove('show');
+};
+
+// ─── Textarea auto-resize + invio con Enter ───────────────────────────────────
+const msgInput = document.getElementById('msgInput');
+msgInput.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+});
+msgInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+});
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function time() { return new Date().toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }); }
+function fmtTime(ts) { return ts ? new Date(ts).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }) : time(); }
+function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async () => {
+  await initSW();
+
+  // iOS: mostra banner "aggiungi a home" se non è standalone
+  if (isIOS() && !isStandalone()) {
+    document.getElementById('a2hsBanner').classList.add('show');
+  }
+
+  // Mostra prompt notifiche se supportate e non ancora decise
+  if ('Notification' in window && Notification.permission === 'default') {
+    // Mostriamo il prompt solo dopo che l'utente ha inserito il nome (al click connetti)
+    // oppure subito se è già standalone
+    if (isStandalone()) {
+      document.getElementById('pushPrompt').classList.add('show');
+    }
+  }
+})();
+</script>
+</body>
+</html>
